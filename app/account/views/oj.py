@@ -47,7 +47,7 @@ class UserProfileAPI(APIView):
                 # api返回的是自己的信息，可以返real_name
                 show_real_name = True
         except User.DoesNotExist:
-            return self.error("User does not exist")
+            return self.error("Пользователь не существует")
         return self.success(UserProfileSerializer(user.userprofile, show_real_name=show_real_name).data)
 
     @validate_serializer(EditUserProfileSerializer)
@@ -70,12 +70,12 @@ class AvatarUploadAPI(APIView):
         if form.is_valid():
             avatar = form.cleaned_data["image"]
         else:
-            return self.error("Invalid file content")
+            return self.error("Неправильное содержимое файла")
         if avatar.size > 2 * 1024 * 1024:
-            return self.error("Picture is too large")
+            return self.error("Изображение слишком большое")
         suffix = os.path.splitext(avatar.name)[-1].lower()
         if suffix not in [".gif", ".jpg", ".jpeg", ".bmp", ".png"]:
-            return self.error("Unsupported file format")
+            return self.error("Не поддерживаемый формат файла")
 
         name = rand_str(10) + suffix
         with open(os.path.join(settings.AVATAR_UPLOAD_DIR, name), "wb") as img:
@@ -85,7 +85,7 @@ class AvatarUploadAPI(APIView):
 
         user_profile.avatar = f"{settings.AVATAR_URI_PREFIX}/{name}"
         user_profile.save()
-        return self.success("Succeeded")
+        return self.success("Успешно")
 
 
 class TwoFactorAuthAPI(APIView):
@@ -96,7 +96,7 @@ class TwoFactorAuthAPI(APIView):
         """
         user = request.user
         if user.two_factor_auth:
-            return self.error("2FA is already turned on")
+            return self.error("2ФА уже включена")
         token = rand_str()
         user.tfa_token = token
         user.save()
@@ -116,9 +116,9 @@ class TwoFactorAuthAPI(APIView):
         if OtpAuth(user.tfa_token).valid_totp(code):
             user.two_factor_auth = True
             user.save()
-            return self.success("Succeeded")
+            return self.success("Успешно")
         else:
-            return self.error("Invalid code")
+            return self.error("Неверный код")
 
     @login_required
     @validate_serializer(TwoFactorAuthCodeSerializer)
@@ -126,13 +126,13 @@ class TwoFactorAuthAPI(APIView):
         code = request.data["code"]
         user = request.user
         if not user.two_factor_auth:
-            return self.error("2FA is already turned off")
+            return self.error("2ФА уже выключена")
         if OtpAuth(user.tfa_token).valid_totp(code):
             user.two_factor_auth = False
             user.save()
-            return self.success("Succeeded")
+            return self.success("Успешно")
         else:
-            return self.error("Invalid code")
+            return self.error("Неверный код")
 
 
 class CheckTFARequiredAPI(APIView):
@@ -163,22 +163,22 @@ class UserLoginAPI(APIView):
         # None is returned if username or password is wrong
         if user:
             if user.is_disabled:
-                return self.error("Your account has been disabled")
+                return self.error("Ваш аккаунт был отключен.")
             if not user.two_factor_auth:
                 auth.login(request, user)
-                return self.success("Succeeded")
+                return self.success("Успешно")
 
             # `tfa_code` not in post data
             if user.two_factor_auth and "tfa_code" not in data:
-                return self.error("tfa_required")
+                return self.error("2фа необходима")
 
             if OtpAuth(user.tfa_token).valid_totp(data["tfa_code"]):
                 auth.login(request, user)
-                return self.success("Succeeded")
+                return self.success("Успешно")
             else:
-                return self.error("Invalid two factor verification code")
+                return self.error("Неверный код 2фа")
         else:
-            return self.error("Invalid username or password")
+            return self.error("Неверное имя пользователя или пароль")
 
 
 class UserLogoutAPI(APIView):
@@ -213,23 +213,23 @@ class UserRegisterAPI(APIView):
         User register api
         """
         if not SysOptions.allow_register:
-            return self.error("Register function has been disabled by admin")
+            return self.error("Функция переадрисации отключена администратором")
 
         data = request.data
         data["username"] = data["username"].lower()
         data["email"] = data["email"].lower()
         captcha = Captcha(request)
         if not captcha.check(data["captcha"]):
-            return self.error("Invalid captcha")
+            return self.error("Неверная капча")
         if User.objects.filter(username=data["username"]).exists():
-            return self.error("Username already exists")
+            return self.error("Логин уже существует")
         if User.objects.filter(email=data["email"]).exists():
-            return self.error("Email already exists")
+            return self.error("Email уже существует")
         user = User.objects.create(username=data["username"], email=data["email"])
         user.set_password(data["password"])
         user.save()
         UserProfile.objects.create(user=user)
-        return self.success("Succeeded")
+        return self.success("Успешно")
 
 
 class UserChangeEmailAPI(APIView):
@@ -241,7 +241,7 @@ class UserChangeEmailAPI(APIView):
         if user:
             if user.two_factor_auth:
                 if "tfa_code" not in data:
-                    return self.error("tfa_required")
+                    return self.error("2фа необходима")
                 if not OtpAuth(user.tfa_token).valid_totp(data["tfa_code"]):
                     return self.error("Invalid two factor verification code")
             data["new_email"] = data["new_email"].lower()
@@ -249,9 +249,9 @@ class UserChangeEmailAPI(APIView):
                 return self.error("The email is owned by other account")
             user.email = data["new_email"]
             user.save()
-            return self.success("Succeeded")
+            return self.success("Успешно")
         else:
-            return self.error("Wrong password")
+            return self.error("Неверный пароль")
 
 
 class UserChangePasswordAPI(APIView):
@@ -267,32 +267,32 @@ class UserChangePasswordAPI(APIView):
         if user:
             if user.two_factor_auth:
                 if "tfa_code" not in data:
-                    return self.error("tfa_required")
+                    return self.error("2фа необходима")
                 if not OtpAuth(user.tfa_token).valid_totp(data["tfa_code"]):
-                    return self.error("Invalid two factor verification code")
+                    return self.error("Неверный код 2фа")
             user.set_password(data["new_password"])
             user.save()
-            return self.success("Succeeded")
+            return self.success("Успешно")
         else:
-            return self.error("Invalid old password")
+            return self.error("Неверный старый пароль")
 
 
 class ApplyResetPasswordAPI(APIView):
     @validate_serializer(ApplyResetPasswordSerializer)
     def post(self, request):
         if request.user.is_authenticated():
-            return self.error("You have already logged in, are you kidding me? ")
+            return self.error("Вы уже вошли в систему, у вас всё норм? ")
         data = request.data
         captcha = Captcha(request)
         if not captcha.check(data["captcha"]):
-            return self.error("Invalid captcha")
+            return self.error("Неверная капча")
         try:
             user = User.objects.get(email__iexact=data["email"])
         except User.DoesNotExist:
-            return self.error("User does not exist")
+            return self.error("Пользователь не существует")
         if user.reset_password_token_expire_time and 0 < int(
                 (user.reset_password_token_expire_time - now()).total_seconds()) < 20 * 60:
-            return self.error("You can only reset password once per 20 minutes")
+            return self.error("Вы можете сбросить пароль не больше раза за 20 минут")
         user.reset_password_token = rand_str()
         user.reset_password_token_expire_time = now() + timedelta(minutes=20)
         user.save()
@@ -307,7 +307,7 @@ class ApplyResetPasswordAPI(APIView):
                                to_name=user.username,
                                subject=f"Reset your password",
                                content=email_html)
-        return self.success("Succeeded")
+        return self.success("Успешно")
 
 
 class ResetPasswordAPI(APIView):
@@ -316,18 +316,18 @@ class ResetPasswordAPI(APIView):
         data = request.data
         captcha = Captcha(request)
         if not captcha.check(data["captcha"]):
-            return self.error("Invalid captcha")
+            return self.error("Неверная капча")
         try:
             user = User.objects.get(reset_password_token=data["token"])
         except User.DoesNotExist:
-            return self.error("Token does not exist")
+            return self.error("Токен не существует")
         if user.reset_password_token_expire_time < now():
-            return self.error("Token has expired")
+            return self.error("Токен истёк")
         user.reset_password_token = None
         user.two_factor_auth = False
         user.set_password(data["password"])
         user.save()
-        return self.success("Succeeded")
+        return self.success("Успешно")
 
 
 class SessionManagementAPI(APIView):
@@ -363,14 +363,14 @@ class SessionManagementAPI(APIView):
     def delete(self, request):
         session_key = request.GET.get("session_key")
         if not session_key:
-            return self.error("Parameter Error")
+            return self.error("Параметрическая ошибка")
         request.session.delete(session_key)
         if session_key in request.user.session_keys:
             request.user.session_keys.remove(session_key)
             request.user.save()
-            return self.success("Succeeded")
+            return self.success("Успешно")
         else:
-            return self.error("Invalid session_key")
+            return self.error("Неверный ключ сессии")
 
 
 class UserRankAPI(APIView):
@@ -411,7 +411,7 @@ class OpenAPIAppkeyAPI(APIView):
     def post(self, request):
         user = request.user
         if not user.open_api:
-            return self.error("OpenAPI function is truned off for you")
+            return self.error("Функция OpenAPI для вас отключена")
         api_appkey = rand_str()
         user.open_api_appkey = api_appkey
         user.save()
@@ -432,5 +432,5 @@ class SSOAPI(CSRFExemptAPIView):
         try:
             user = User.objects.get(auth_token=request.data["token"])
         except User.DoesNotExist:
-            return self.error("User does not exist")
+            return self.error("Пользователь не сущестует")
         return self.success({"username": user.username, "avatar": user.userprofile.avatar, "admin_type": user.admin_type})

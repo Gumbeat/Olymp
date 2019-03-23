@@ -117,11 +117,11 @@ class TestCaseAPI(CSRFExemptAPIView, TestCaseZipProcessor):
     def get(self, request):
         problem_id = request.GET.get("problem_id")
         if not problem_id:
-            return self.error("Parameter error, problem_id is required")
+            return self.error("Параметрическая ошибка, необходим id задачи")
         try:
             problem = Problem.objects.get(id=problem_id)
         except Problem.DoesNotExist:
-            return self.error("Problem does not exists")
+            return self.error("Задача не существует")
 
         if problem.contest:
             ensure_created_by(problem.contest, request.user)
@@ -130,7 +130,7 @@ class TestCaseAPI(CSRFExemptAPIView, TestCaseZipProcessor):
 
         test_case_dir = os.path.join(settings.TEST_CASE_DIR, problem.test_case_id)
         if not os.path.isdir(test_case_dir):
-            return self.error("Test case does not exists")
+            return self.error("Тесты для этой задачи не существуют. Попробуйте загрузить тесты ещё раз.")
         name_list = self.filter_name_list(os.listdir(test_case_dir), problem.spj)
         name_list.append("info")
         file_name = os.path.join(test_case_dir, problem.test_case_id + ".zip")
@@ -150,7 +150,7 @@ class TestCaseAPI(CSRFExemptAPIView, TestCaseZipProcessor):
             spj = form.cleaned_data["spj"] == "true"
             file = form.cleaned_data["file"]
         else:
-            return self.error("Upload failed")
+            return self.error("Загрузка не удалась")
         zip_file = f"/tmp/{rand_str()}.zip"
         with open(zip_file, "wb") as f:
             for chunk in file:
@@ -203,9 +203,9 @@ class ProblemAPI(ProblemBase):
         data = request.data
         _id = data["_id"]
         if not _id:
-            return self.error("Display ID is required")
+            return self.error("Требуется отображаемый id")
         if Problem.objects.filter(_id=_id, contest_id__isnull=True).exists():
-            return self.error("Display ID already exists")
+            return self.error("Отображаемый id уже существует")
 
         error_info = self.common_checks(request)
         if error_info:
@@ -235,7 +235,7 @@ class ProblemAPI(ProblemBase):
                 ensure_created_by(problem, request.user)
                 return self.success(ProblemAdminSerializer(problem).data)
             except Problem.DoesNotExist:
-                return self.error("Problem does not exist")
+                return self.error("Задача не существует")
 
         problems = Problem.objects.filter(contest_id__isnull=True).order_by("-create_time")
         if rule_type:
@@ -261,11 +261,11 @@ class ProblemAPI(ProblemBase):
             problem = Problem.objects.get(id=problem_id)
             ensure_created_by(problem, request.user)
         except Problem.DoesNotExist:
-            return self.error("Problem does not exist")
+            return self.error("Задача не существует")
 
         _id = data["_id"]
         if not _id:
-            return self.error("Display ID is required")
+            return self.error("Необходим отображаемый ID")
         if Problem.objects.exclude(id=problem_id).filter(_id=_id, contest_id__isnull=True).exists():
             return self.error("Display ID already exists")
 
@@ -294,14 +294,15 @@ class ProblemAPI(ProblemBase):
     def delete(self, request):
         id = request.GET.get("id")
         if not id:
-            return self.error("Invalid parameter, id is required")
+            return self.error("Неверный параметр требуется id")
         try:
             problem = Problem.objects.get(id=id, contest_id__isnull=True)
         except Problem.DoesNotExist:
-            return self.error("Problem does not exists")
+            return self.error("Задача не существует")
         ensure_created_by(problem, request.user)
         if Submission.objects.filter(problem=problem).exists():
-            return self.error("Can't delete the problem as it has submissions")
+            [submission.delete() for submission in Submission.objects.filter(problem=problem)]
+            # return self.error("Can't delete the problem as it has submissions")
         d = os.path.join(settings.TEST_CASE_DIR, problem.test_case_id)
         if os.path.isdir(d):
             shutil.rmtree(d, ignore_errors=True)
@@ -317,17 +318,17 @@ class ContestProblemAPI(ProblemBase):
             contest = Contest.objects.get(id=data.pop("contest_id"))
             ensure_created_by(contest, request.user)
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
 
         if data["rule_type"] != contest.rule_type:
             return self.error("Invalid rule type")
 
         _id = data["_id"]
         if not _id:
-            return self.error("Display ID is required")
+            return self.error("Требуется отображаесый id")
 
         if Problem.objects.filter(_id=_id, contest=contest).exists():
-            return self.error("Duplicate Display id")
+            return self.error("Такой отображаемый id уже существует")
 
         error_info = self.common_checks(request)
         if error_info:
@@ -356,16 +357,16 @@ class ContestProblemAPI(ProblemBase):
                 problem = Problem.objects.get(id=problem_id)
                 ensure_created_by(problem.contest, user)
             except Problem.DoesNotExist:
-                return self.error("Problem does not exist")
+                return self.error("Задача не существует")
             return self.success(ProblemAdminSerializer(problem).data)
 
         if not contest_id:
-            return self.error("Contest id is required")
+            return self.error("Необходим id")
         try:
             contest = Contest.objects.get(id=contest_id)
             ensure_created_by(contest, user)
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
         problems = Problem.objects.filter(contest=contest).order_by("-create_time")
         if user.is_admin():
             problems = problems.filter(contest__created_by=user)
@@ -383,7 +384,7 @@ class ContestProblemAPI(ProblemBase):
             contest = Contest.objects.get(id=data.pop("contest_id"))
             ensure_created_by(contest, user)
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
 
         if data["rule_type"] != contest.rule_type:
             return self.error("Invalid rule type")
@@ -393,11 +394,11 @@ class ContestProblemAPI(ProblemBase):
         try:
             problem = Problem.objects.get(id=problem_id, contest=contest)
         except Problem.DoesNotExist:
-            return self.error("Problem does not exist")
+            return self.error("Задача не существует")
 
         _id = data["_id"]
         if not _id:
-            return self.error("Display ID is required")
+            return self.error("Необходим отображаемый ID")
         if Problem.objects.exclude(id=problem_id).filter(_id=_id, contest=contest).exists():
             return self.error("Display ID already exists")
 
@@ -424,14 +425,15 @@ class ContestProblemAPI(ProblemBase):
     def delete(self, request):
         id = request.GET.get("id")
         if not id:
-            return self.error("Invalid parameter, id is required")
+            return self.error("Неверный параметр требуется id")
         try:
             problem = Problem.objects.get(id=id, contest_id__isnull=False)
         except Problem.DoesNotExist:
-            return self.error("Problem does not exists")
+            return self.error("Задача не существует")
         ensure_created_by(problem.contest, request.user)
         if Submission.objects.filter(problem=problem).exists():
-            return self.error("Can't delete the problem as it has submissions")
+            [submission.delete() for submission in Submission.objects.filter(problem=problem)]
+            # return self.error("Can't delete the problem as it has submissions")
         d = os.path.join(settings.TEST_CASE_DIR, problem.test_case_id)
         if os.path.isdir(d):
             shutil.rmtree(d, ignore_errors=True)
@@ -446,15 +448,15 @@ class MakeContestProblemPublicAPIView(APIView):
         data = request.data
         display_id = data.get("display_id")
         if Problem.objects.filter(_id=display_id, contest_id__isnull=True).exists():
-            return self.error("Duplicate display ID")
+            return self.error("Такой отображаемый ID уже есть")
 
         try:
             problem = Problem.objects.get(id=data["id"])
         except Problem.DoesNotExist:
-            return self.error("Problem does not exist")
+            return self.error("Задача не существует")
 
         if not problem.contest or problem.is_public:
-            return self.error("Already be a public problem")
+            return self.error("Задача уже общедоступная")
         problem.is_public = True
         problem.save()
         # https://docs.djangoproject.com/en/1.11/topics/db/queries/#copying-model-instances
@@ -478,12 +480,12 @@ class AddContestProblemAPI(APIView):
             contest = Contest.objects.get(id=data["contest_id"])
             problem = Problem.objects.get(id=data["problem_id"])
         except (Contest.DoesNotExist, Problem.DoesNotExist):
-            return self.error("Contest or Problem does not exist")
+            return self.error("Соревнование или Задача не существует")
 
         if contest.status == ContestStatus.CONTEST_ENDED:
-            return self.error("Contest has ended")
+            return self.error("Соревнование завершено")
         if Problem.objects.filter(contest=contest, _id=data["display_id"]).exists():
-            return self.error("Duplicate display id in this contest")
+            return self.error("Такой id для отображения уже есть в соревновании")
 
         tags = problem.tags.all()
         problem.pk = None
@@ -560,7 +562,7 @@ class ImportProblemAPI(CSRFExemptAPIView, TestCaseZipProcessor):
                 for chunk in file:
                     f.write(chunk)
         else:
-            return self.error("Upload failed")
+            return self.error("Ошибка загрузки")
 
         count = 0
         with zipfile.ZipFile(tmp_file, "r") as zip_file:
@@ -574,12 +576,12 @@ class ImportProblemAPI(CSRFExemptAPIView, TestCaseZipProcessor):
                         problem_info = json.load(f)
                         serializer = ImportProblemSerializer(data=problem_info)
                         if not serializer.is_valid():
-                            return self.error(f"Invalid problem format, error is {serializer.errors}")
+                            return self.error(f"Неверный формат задачи, ошибка: {serializer.errors}")
                         else:
                             problem_info = serializer.data
                             for item in problem_info["template"].keys():
                                 if item not in language_names:
-                                    return self.error(f"Unsupported language {item}")
+                                    return self.error(f"Неподдерживаемый язык {item}")
 
                         problem_info["display_id"] = problem_info["display_id"][:24]
                         for k, v in problem_info["template"].items():
@@ -680,7 +682,7 @@ class FPSProblemImport(CSRFExemptAPIView):
                     tf.file.write(chunk)
                 problems = FPSParser(tf.name).parse()
         else:
-            return self.error("Parse upload file error")
+            return self.error("Ошибка парсинга при загрузке")
 
         helper = FPSHelper()
         with transaction.atomic():
@@ -692,7 +694,7 @@ class FPSProblemImport(CSRFExemptAPIView):
                 problem_data = helper.save_image(_problem, settings.UPLOAD_DIR, settings.UPLOAD_PREFIX)
                 s = FPSProblemSerializer(data=problem_data)
                 if not s.is_valid():
-                    return self.error(f"Parse FPS file error: {s.errors}")
+                    return self.error(f"Ошибка парсинга файла: {s.errors}")
                 problem_data = s.data
                 problem_data["test_case_id"] = test_case_id
                 self._create_problem(problem_data, request.user)

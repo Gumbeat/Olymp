@@ -18,7 +18,7 @@ class PickOneAPI(APIView):
         problems = Problem.objects.filter(contest_id__isnull=True, visible=True)
         count = problems.count()
         if count == 0:
-            return self.error("No problem to pick")
+            return self.error("Нет задачи для выбора")
         return self.success(problems[random.randint(0, count - 1)]._id)
 
 
@@ -52,11 +52,11 @@ class ProblemAPI(APIView):
                 self._add_problem_status(request, problem_data)
                 return self.success(problem_data)
             except Problem.DoesNotExist:
-                return self.error("Problem does not exist")
+                return self.error("Задача не существует")
 
         limit = request.GET.get("limit")
         if not limit:
-            return self.error("Limit is needed")
+            return self.error("Ограничение необходимо")
 
         problems = Problem.objects.select_related("created_by").filter(contest_id__isnull=True, visible=True)
         # 按照标签筛选
@@ -99,7 +99,7 @@ class ContestProblemAPI(APIView):
                                                                            contest=self.contest,
                                                                            visible=True)
             except Problem.DoesNotExist:
-                return self.error("Problem does not exist.")
+                return self.error("Задача не существует")
             if self.contest.problem_details_permission(request.user):
                 problem_data = ProblemSerializer(problem).data
                 self._add_problem_status(request, [problem_data, ])

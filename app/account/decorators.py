@@ -20,10 +20,10 @@ class BasePermissionDecorator(object):
 
         if self.check_permission():
             if self.request.user.is_disabled:
-                return self.error("Your account is disabled")
+                return self.error("Ваш аккаунт отключен")
             return self.func(*args, **kwargs)
         else:
-            return self.error("Please login first")
+            return self.error("Сначала войдите в систему")
 
     def check_permission(self):
         raise NotImplementedError()
@@ -71,17 +71,17 @@ def check_contest_permission(check_type="details"):
             else:
                 contest_id = request.GET.get("contest_id")
             if not contest_id:
-                return self.error("Parameter error, contest_id is required")
+                return self.error("Отсутствует параметр id соревнования")
 
             try:
                 # use self.contest to avoid query contest again in view.
                 self.contest = Contest.objects.select_related("created_by").get(id=contest_id, visible=True)
             except Contest.DoesNotExist:
-                return self.error("Contest %s doesn't exist" % contest_id)
+                return self.error("Соревнование %s не существует" % contest_id)
 
             # Anonymous
             if not user.is_authenticated():
-                return self.error("Please login first.")
+                return self.error("Сначала войдите в систему.")
 
             # creator or owner
             if user.is_contest_admin(self.contest):
@@ -90,16 +90,16 @@ def check_contest_permission(check_type="details"):
             if self.contest.contest_type == ContestType.PASSWORD_PROTECTED_CONTEST:
                 # password error
                 if self.contest.id not in request.session.get("accessible_contests", []):
-                    return self.error("Password is required.")
+                    return self.error("Требуется пароль")
 
             # regular user get contest problems, ranks etc. before contest started
             if self.contest.status == ContestStatus.CONTEST_NOT_START and check_type != "details":
-                return self.error("Contest has not started yet.")
+                return self.error("Соревнование ещё не началось")
 
             # check does user have permission to get ranks, submissions in OI Contest
             if self.contest.status == ContestStatus.CONTEST_UNDERWAY and self.contest.rule_type == ContestRuleType.OI:
                 if not self.contest.real_time_rank and (check_type == "ranks" or check_type == "submissions"):
-                    return self.error(f"No permission to get {check_type}")
+                    return self.error(f"Нет доступа для получения {check_type}")
 
             return func(*args, **kwargs)
         return _check_permission

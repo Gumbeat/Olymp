@@ -29,14 +29,14 @@ class ContestAPI(APIView):
         data["end_time"] = dateutil.parser.parse(data["end_time"])
         data["created_by"] = request.user
         if data["end_time"] <= data["start_time"]:
-            return self.error("Start time must occur earlier than end time")
+            return self.error("Время начала должно быть меньше времени конца")
         if data.get("password") and data["password"] == "":
             data["password"] = None
         for ip_range in data["allowed_ip_ranges"]:
             try:
                 ip_network(ip_range, strict=False)
             except ValueError:
-                return self.error(f"{ip_range} is not a valid cidr network")
+                return self.error(f"{ip_range} не подходит для cidr сети")
         contest = Contest.objects.create(**data)
         return self.success(ContestAdminSerializer(contest).data)
 
@@ -47,18 +47,18 @@ class ContestAPI(APIView):
             contest = Contest.objects.get(id=data.pop("id"))
             ensure_created_by(contest, request.user)
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
         data["start_time"] = dateutil.parser.parse(data["start_time"])
         data["end_time"] = dateutil.parser.parse(data["end_time"])
         if data["end_time"] <= data["start_time"]:
-            return self.error("Start time must occur earlier than end time")
+            return self.error("Время начала должно быть раньше времени окончания")
         if not data["password"]:
             data["password"] = None
         for ip_range in data["allowed_ip_ranges"]:
             try:
                 ip_network(ip_range, strict=False)
             except ValueError as e:
-                return self.error(f"{ip_range} is not a valid cidr network")
+                return self.error(f"{ip_range} не подходит для cidr сети")
         if not contest.real_time_rank and data.get("real_time_rank"):
             cache_key = f"{CacheKey.contest_rank_cache}:{contest.id}"
             cache.delete(cache_key)
@@ -76,7 +76,7 @@ class ContestAPI(APIView):
                 ensure_created_by(contest, request.user)
                 return self.success(ContestAdminSerializer(contest).data)
             except Contest.DoesNotExist:
-                return self.error("Contest does not exist")
+                return self.error("Соревнование не существует")
 
         contests = Contest.objects.all().order_by("-create_time")
         if request.user.is_admin():
@@ -101,7 +101,7 @@ class ContestAnnouncementAPI(APIView):
             data["contest"] = contest
             data["created_by"] = request.user
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
         announcement = ContestAnnouncement.objects.create(**data)
         return self.success(ContestAnnouncementSerializer(announcement).data)
 
@@ -115,7 +115,7 @@ class ContestAnnouncementAPI(APIView):
             contest_announcement = ContestAnnouncement.objects.get(id=data.pop("id"))
             ensure_created_by(contest_announcement, request.user)
         except ContestAnnouncement.DoesNotExist:
-            return self.error("Contest announcement does not exist")
+            return self.error("Анонс соревнования не существует")
         for k, v in data.items():
             setattr(contest_announcement, k, v)
         contest_announcement.save()
@@ -145,11 +145,11 @@ class ContestAnnouncementAPI(APIView):
                 ensure_created_by(contest_announcement, request.user)
                 return self.success(ContestAnnouncementSerializer(contest_announcement).data)
             except ContestAnnouncement.DoesNotExist:
-                return self.error("Contest announcement does not exist")
+                return self.error("Анонс соревнования не сущестует")
 
         contest_id = request.GET.get("contest_id")
         if not contest_id:
-            return self.error("Parameter error")
+            return self.error("Ошибка параметра")
         contest_announcements = ContestAnnouncement.objects.filter(contest_id=contest_id)
         if request.user.is_admin():
             contest_announcements = contest_announcements.filter(created_by=request.user)
@@ -186,10 +186,10 @@ class ACMContestHelper(APIView):
         try:
             rank = ACMContestRank.objects.get(pk=data["rank_id"])
         except ACMContestRank.DoesNotExist:
-            return self.error("Rank id does not exist")
+            return self.error("id позиции не существует")
         problem_rank_status = rank.submission_info.get(data["problem_id"])
         if not problem_rank_status:
-            return self.error("Problem id does not exist")
+            return self.error("id задачи не существует")
         problem_rank_status["checked"] = data["checked"]
         rank.save(update_fields=("submission_info",))
         return self.success()
@@ -230,7 +230,7 @@ class DownloadContestSubmissions(APIView):
             contest = Contest.objects.get(id=contest_id)
             ensure_created_by(contest, request.user)
         except Contest.DoesNotExist:
-            return self.error("Contest does not exist")
+            return self.error("Соревнование не существует")
 
         exclude_admin = request.GET.get("exclude_admin") == "1"
         zip_path = self._dump_submissions(contest, exclude_admin)

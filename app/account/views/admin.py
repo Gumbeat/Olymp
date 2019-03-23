@@ -29,7 +29,7 @@ class UserAdminAPI(APIView):
         user_list = []
         for user_data in data:
             if len(user_data) != 3 or len(user_data[0]) > 32:
-                return self.error(f"Error occurred while processing data '{user_data}'")
+                return self.error(f"Ошибка при обработке данных '{user_data}'")
             user_list.append(User(username=user_data[0], password=make_password(user_data[1]), email=user_data[2]))
 
         try:
@@ -53,11 +53,11 @@ class UserAdminAPI(APIView):
         try:
             user = User.objects.get(id=data["id"])
         except User.DoesNotExist:
-            return self.error("User does not exist")
+            return self.error("Пользователь не существует")
         if User.objects.filter(username=data["username"].lower()).exclude(id=user.id).exists():
-            return self.error("Username already exists")
+            return self.error("Такой логин уже существует")
         if User.objects.filter(email=data["email"].lower()).exclude(id=user.id).exists():
-            return self.error("Email already exists")
+            return self.error("Email уже существует")
 
         pre_username = user.username
         user.username = data["username"].lower()
@@ -109,7 +109,7 @@ class UserAdminAPI(APIView):
             try:
                 user = User.objects.get(id=user_id)
             except User.DoesNotExist:
-                return self.error("User does not exist")
+                return self.error("Пользователь не сущестует")
             return self.success(UserAdminSerializer(user).data)
 
         user = User.objects.all().order_by("-create_time")
@@ -134,7 +134,7 @@ class UserAdminAPI(APIView):
     def delete(self, request):
         id = request.GET.get("id")
         if not id:
-            return self.error("Invalid Parameter, id is required")
+            return self.error("Неверный параметр, id необходим")
         for user_id in id.split(","):
             if user_id:
                 error = self.delete_one(user_id)
@@ -151,12 +151,12 @@ class GenerateUserAPI(APIView):
         """
         file_id = request.GET.get("file_id")
         if not file_id:
-            return self.error("Invalid Parameter, file_id is required")
+            return self.error("Неверный параметр, id файла необходим")
         if not re.match(r"^[a-zA-Z0-9]+$", file_id):
-            return self.error("Illegal file_id")
+            return self.error("Неверный id файла")
         file_path = f"/tmp/{file_id}.xlsx"
         if not os.path.isfile(file_path):
-            return self.error("File does not exist")
+            return self.error("Файл не существует")
         with open(file_path, "rb") as f:
             raw_data = f.read()
         os.remove(file_path)
@@ -174,9 +174,9 @@ class GenerateUserAPI(APIView):
         data = request.data
         number_max_length = max(len(str(data["number_from"])), len(str(data["number_to"])))
         if number_max_length + len(data["prefix"]) + len(data["suffix"]) > 32:
-            return self.error("Username should not more than 32 characters")
+            return self.error("Логин не может быть больше 32 символов")
         if data["number_from"] > data["number_to"]:
-            return self.error("Start number must be lower than end number")
+            return self.error("Начальное число должно быть меньше конечного")
 
         file_id = rand_str(8)
         filename = f"/tmp/{file_id}.xlsx"
@@ -204,7 +204,7 @@ class GenerateUserAPI(APIView):
                     worksheet.write_string(i, 1, item.raw_password)
                     i += 1
                 workbook.close()
-                return self.success({"file_id": file_id})
+                return self.success({"id файла": file_id})
         except IntegrityError as e:
             # Extract detail from exception message
             #    duplicate key value violates unique constraint "user_username_key"
