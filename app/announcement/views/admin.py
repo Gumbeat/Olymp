@@ -30,7 +30,7 @@ class AnnouncementAdminAPI(APIView):
         try:
             announcement = Announcement.objects.get(id=data.pop("id"))
         except Announcement.DoesNotExist:
-            return self.error("Announcement does not exist")
+            return self.error("Соревнование не существует")
 
         for k, v in data.items():
             setattr(announcement, k, v)

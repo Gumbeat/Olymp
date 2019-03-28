@@ -162,7 +162,7 @@ _pascal_lang_config = {
         "max_cpu_time": 3000,
         "max_real_time": 5000,
         "max_memory": -1,
-        "compile_command": "/usr/bin/pc {src_path}"
+        "compile_command": "/usr/bin/fpc {src_path}"
     },
     "run": {
         "command": "{exe_dir}/Main",
@@ -215,7 +215,7 @@ _py3_lang_config = {
     "run": {
         "command": "/usr/bin/python3 {exe_path}",
         "seccomp_rule": "general",
-        "env": default_env
+        "env": default_env + ['PYTHONIOENCODING=utf-8']
     }
 }
 

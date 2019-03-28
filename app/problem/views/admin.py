@@ -121,7 +121,7 @@ class TestCaseAPI(CSRFExemptAPIView, TestCaseZipProcessor):
         try:
             problem = Problem.objects.get(id=problem_id)
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
 
         if problem.contest:
             ensure_created_by(problem.contest, request.user)
@@ -235,7 +235,7 @@ class ProblemAPI(ProblemBase):
                 ensure_created_by(problem, request.user)
                 return self.success(ProblemAdminSerializer(problem).data)
             except Problem.DoesNotExist:
-                return self.error("Задача не существует")
+                return self.error("Задачи не существует")
 
         problems = Problem.objects.filter(contest_id__isnull=True).order_by("-create_time")
         if rule_type:
@@ -261,13 +261,13 @@ class ProblemAPI(ProblemBase):
             problem = Problem.objects.get(id=problem_id)
             ensure_created_by(problem, request.user)
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
 
         _id = data["_id"]
         if not _id:
             return self.error("Необходим отображаемый ID")
         if Problem.objects.exclude(id=problem_id).filter(_id=_id, contest_id__isnull=True).exists():
-            return self.error("Display ID already exists")
+            return self.error("Отображаемый ID уже существует")
 
         error_info = self.common_checks(request)
         if error_info:
@@ -298,7 +298,7 @@ class ProblemAPI(ProblemBase):
         try:
             problem = Problem.objects.get(id=id, contest_id__isnull=True)
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
         ensure_created_by(problem, request.user)
         if Submission.objects.filter(problem=problem).exists():
             [submission.delete() for submission in Submission.objects.filter(problem=problem)]
@@ -357,7 +357,7 @@ class ContestProblemAPI(ProblemBase):
                 problem = Problem.objects.get(id=problem_id)
                 ensure_created_by(problem.contest, user)
             except Problem.DoesNotExist:
-                return self.error("Задача не существует")
+                return self.error("Задачи не существует")
             return self.success(ProblemAdminSerializer(problem).data)
 
         if not contest_id:
@@ -394,7 +394,7 @@ class ContestProblemAPI(ProblemBase):
         try:
             problem = Problem.objects.get(id=problem_id, contest=contest)
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
 
         _id = data["_id"]
         if not _id:
@@ -429,7 +429,7 @@ class ContestProblemAPI(ProblemBase):
         try:
             problem = Problem.objects.get(id=id, contest_id__isnull=False)
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
         ensure_created_by(problem.contest, request.user)
         if Submission.objects.filter(problem=problem).exists():
             [submission.delete() for submission in Submission.objects.filter(problem=problem)]
@@ -453,7 +453,7 @@ class MakeContestProblemPublicAPIView(APIView):
         try:
             problem = Problem.objects.get(id=data["id"])
         except Problem.DoesNotExist:
-            return self.error("Задача не существует")
+            return self.error("Задачи не существует")
 
         if not problem.contest or problem.is_public:
             return self.error("Задача уже общедоступная")

@@ -246,7 +246,7 @@ class UserChangeEmailAPI(APIView):
                     return self.error("Invalid two factor verification code")
             data["new_email"] = data["new_email"].lower()
             if User.objects.filter(email=data["new_email"]).exists():
-                return self.error("The email is owned by other account")
+                return self.error("Под этим имейлом уже зарегистрирован аккаунт")
             user.email = data["new_email"]
             user.save()
             return self.success("Успешно")

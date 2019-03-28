@@ -10,7 +10,7 @@ class SubmissionRejudgeAPI(APIView):
     def get(self, request):
         id = request.GET.get("id")
         if not id:
-            return self.error("Parameter error, id is required")
+            return self.error("Параметрическая ошибка, введите id")
         try:
             submission = Submission.objects.select_related("problem").get(id=id, contest_id__isnull=True)
         except Submission.DoesNotExist:

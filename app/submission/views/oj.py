@@ -89,15 +89,14 @@ class SubmissionAPI(APIView):
         try:
             submission = Submission.objects.select_related("problem").get(id=submission_id)
         except Submission.DoesNotExist:
-            return self.error("Submission doesn't exist")
+            return self.error("Решение не существует")
         if not submission.check_user_permission(request.user):
             return self.error("No permission for this submission")
 
-        if submission.problem.rule_type == ProblemRuleType.OI or request.user.is_admin_role():
-            submission_data = SubmissionModelSerializer(submission).data
-        else:
-            submission_data = SubmissionSafeModelSerializer(submission).data
-        # 是否有权限取消共享
+        # if submission.problem.rule_type == ProblemRuleType.OI or request.user.is_admin_role():
+        submission_data = SubmissionModelSerializer(submission).data
+        # else:
+        #     submission_data = SubmissionSafeModelSerializer(submission).data
         submission_data["can_unshare"] = submission.check_user_permission(request.user, check_share=False)
         return self.success(submission_data)
 
@@ -110,7 +109,7 @@ class SubmissionAPI(APIView):
         try:
             submission = Submission.objects.select_related("problem").get(id=request.data["id"])
         except Submission.DoesNotExist:
-            return self.error("Submission doesn't exist")
+            return self.error("Решение не существует")
         if not submission.check_user_permission(request.user, check_share=False):
             return self.error("No permission to share the submission")
         if submission.contest and submission.contest.status == ContestStatus.CONTEST_UNDERWAY:
@@ -123,9 +122,9 @@ class SubmissionAPI(APIView):
 class SubmissionListAPI(APIView):
     def get(self, request):
         if not request.GET.get("limit"):
-            return self.error("Limit is needed")
+            return self.error("Нужен лимит")
         if request.GET.get("contest_id"):
-            return self.error("Parameter error")
+            return self.error("Параметрическая ошибка")
 
         submissions = Submission.objects.filter(contest_id__isnull=True).select_related("problem__created_by")
         problem_id = request.GET.get("problem_id")
@@ -136,7 +135,7 @@ class SubmissionListAPI(APIView):
             try:
                 problem = Problem.objects.get(_id=problem_id, contest_id__isnull=True, visible=True)
             except Problem.DoesNotExist:
-                return self.error("Problem doesn't exist")
+                return self.error("Задачи не существует")
             submissions = submissions.filter(problem=problem)
         if (myself and myself == "1") or not SysOptions.submission_list_show_all:
             submissions = submissions.filter(user_id=request.user.id)
@@ -153,7 +152,7 @@ class ContestSubmissionListAPI(APIView):
     @check_contest_permission(check_type="submissions")
     def get(self, request):
         if not request.GET.get("limit"):
-            return self.error("Limit is needed")
+            return self.error("Нужен лимит")
 
         contest = self.contest
         submissions = Submission.objects.filter(contest_id=contest.id).select_related("problem__created_by")
@@ -165,7 +164,7 @@ class ContestSubmissionListAPI(APIView):
             try:
                 problem = Problem.objects.get(_id=problem_id, contest_id=contest.id, visible=True)
             except Problem.DoesNotExist:
-                return self.error("Problem doesn't exist")
+                return self.error("Задачи не существует")
             submissions = submissions.filter(problem=problem)
 
         if myself and myself == "1":
@@ -191,7 +190,7 @@ class ContestSubmissionListAPI(APIView):
 class SubmissionExistsAPI(APIView):
     def get(self, request):
         if not request.GET.get("problem_id"):
-            return self.error("Parameter error, problem_id is required")
+            return self.error("Параметрическая ошибка, необходимо ввести id задачи")
         return self.success(request.user.is_authenticated() and
                             Submission.objects.filter(problem_id=request.GET["problem_id"],
                                                       user_id=request.user.id).exists())

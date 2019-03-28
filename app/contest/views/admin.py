@@ -225,7 +225,7 @@ class DownloadContestSubmissions(APIView):
     def get(self, request):
         contest_id = request.GET.get("contest_id")
         if not contest_id:
-            return self.error("Parameter error")
+            return self.error("Параметрическая ошибка")
         try:
             contest = Contest.objects.get(id=contest_id)
             ensure_created_by(contest, request.user)

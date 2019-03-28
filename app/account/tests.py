@@ -98,14 +98,14 @@ class UserLoginAPITest(APITestCase):
     def test_login_with_correct_info(self):
         response = self.client.post(self.login_url,
                                     data={"username": self.username, "password": self.password})
-        self.assertDictEqual(response.data, {"error": None, "data": "Succeeded"})
+        self.assertDictEqual(response.data, {"error": None, "data": "Успешно"})
 
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated())
 
     def test_login_with_correct_info_upper_username(self):
         resp = self.client.post(self.login_url, data={"username": self.username.upper(), "password": self.password})
-        self.assertDictEqual(resp.data, {"error": None, "data": "Succeeded"})
+        self.assertDictEqual(resp.data, {"error": None, "data": "Успешно"})
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated())
 
@@ -126,7 +126,7 @@ class UserLoginAPITest(APITestCase):
                                     data={"username": self.username,
                                           "password": self.password,
                                           "tfa_code": code})
-        self.assertDictEqual(response.data, {"error": None, "data": "Succeeded"})
+        self.assertDictEqual(response.data, {"error": None, "data": "Успешно"})
 
         user = auth.get_user(self.client)
         self.assertTrue(user.is_authenticated())
@@ -195,7 +195,7 @@ class UserRegisterAPITest(CaptchaTest):
 
     def test_register_with_correct_info(self):
         response = self.client.post(self.register_url, data=self.data)
-        self.assertDictEqual(response.data, {"error": None, "data": "Succeeded"})
+        self.assertDictEqual(response.data, {"error": None, "data": "Успешно"})
 
     def test_username_already_exists(self):
         self.test_register_with_correct_info()
@@ -419,7 +419,7 @@ class UserChangePasswordAPITest(APITestCase):
     def test_valid_ola_password(self):
         self.assertTrue(self.client.login(username=self.username, password=self.old_password))
         response = self.client.post(self.url, data=self.data)
-        self.assertEqual(response.data, {"error": None, "data": "Succeeded"})
+        self.assertEqual(response.data, {"error": None, "data": "Успешно"})
         self.assertTrue(self.client.login(username=self.username, password=self.new_password))
 
     def test_invalid_old_password(self):
