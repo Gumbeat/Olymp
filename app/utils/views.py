@@ -40,5 +40,5 @@ class SimditorImageUploadAPIView(CSRFExemptAPIView):
                 "file_path": f"{settings.UPLOAD_PREFIX}/{img_name}"})
         return self.response({
             "success": True,
-            "msg": "Success",
+            "msg": "Успешно",
             "file_path": f"{settings.UPLOAD_PREFIX}/{img_name}"})

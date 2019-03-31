@@ -27,15 +27,20 @@ class UserAdminAPI(APIView):
         data = request.data["users"]
 
         user_list = []
+        profile_list = {}
         for user_data in data:
-            if len(user_data) != 3 or len(user_data[0]) > 32:
+            if len(user_data) != 5 or len(user_data[0]) > 32:
                 return self.error(f"Ошибка при обработке данных '{user_data}'")
-            user_list.append(User(username=user_data[0], password=make_password(user_data[1]), email=user_data[2]))
+            new_user = User(username=user_data[0], password=make_password(user_data[1]), email=user_data[2])
+            new_up = UserProfile(real_name=user_data[3], mood=user_data[4])
+            user_list.append(new_user)
+            profile_list[new_user.username] = new_up
 
         try:
             with transaction.atomic():
                 ret = User.objects.bulk_create(user_list)
-                UserProfile.objects.bulk_create([UserProfile(user=user) for user in ret])
+                UserProfile.objects.bulk_create([UserProfile(user=user, real_name=profile_list[user.username].real_name,
+                                                             mood=profile_list[user.username].mood) for user in ret])
             return self.success()
         except IntegrityError as e:
             # Extract detail from exception message
@@ -125,9 +130,9 @@ class UserAdminAPI(APIView):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return f"User {user_id} does not exist"
+            return f"Пользователь {user_id} не существует"
         if Submission.objects.filter(user_id=user_id).exists():
-            return f"Can't delete the user {user_id} as he/she has submissions"
+            [sub.delete() for sub in Submission.objects.filter(user_id=user_id)]
         user.delete()
 
     @super_admin_required
