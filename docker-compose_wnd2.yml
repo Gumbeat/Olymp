@@ -1,0 +1,74 @@
+version: "3"
+services:
+
+  oj-redis:
+    #image: redis
+    image: redis:4.0-alpine
+    container_name: oj-redis
+    restart: always
+    volumes:
+      - D:\Olymp\data\redis:/data
+  
+  oj-postgres:
+    #image: postgres
+    image: postgres:10-alpine
+    container_name: oj-postgres
+    restart: always
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=onlinejudge
+      - POSTGRES_USER=onlinejudge
+      - POSTGRES_PASSWORD=onlinejudge
+
+  judge-server:
+    image: judge_server
+    container_name: judge-server
+    restart: always
+    read_only: false
+    cap_drop:
+      - SETPCAP
+      - MKNOD
+      - NET_BIND_SERVICE
+      - SYS_CHROOT
+      - SETFCAP
+      - FSETID
+    tmpfs:
+      - /tmp
+    volumes:
+      - D:\Olymp\data\backend\test_case:/test_case:ro
+      - D:\Olymp\data\judge_server\log:/log
+      - D:\Olymp\data\judge_server\run:/judger
+    environment:
+      - SERVICE_URL=http://judge-server:8080
+      - BACKEND_URL=http://oj-backend:8000/api/judge_server_heartbeat/
+      - TOKEN=CHANGE_THIS
+      # - judger_debug=1
+  
+  #failed
+  oj-backend:
+    # image: registry.cn-hangzhou.aliyuncs.com/onlinejudge/oj_backend
+    #image: oj_backend
+    build: ./oj_backend
+    container_name: oj-backend
+    restart: always
+    depends_on:
+      - oj-redis
+      - oj-postgres
+      - judge-server
+    volumes:
+      - D:\Olymp\data\backend:/data
+      - D:\Olymp\app:/app
+    environment:
+      - POSTGRES_DB=onlinejudge
+      - POSTGRES_USER=onlinejudge
+      - POSTGRES_PASSWORD=onlinejudge
+      - JUDGE_SERVER_TOKEN=CHANGE_THIS
+      # - FORCE_HTTPS=1
+      # - STATIC_CDN_HOST=cdn.oj.com
+    ports:
+      - "0.0.0.0:80:8000"
+      - "0.0.0.0:443:1443"
+      
+volumes:
+    postgres:
